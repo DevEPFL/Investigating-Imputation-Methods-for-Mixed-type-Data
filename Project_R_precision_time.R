@@ -1,23 +1,7 @@
 # ---------------------------
-# 0. Set Global Seed FIRST
+# 0. Set Global Seed
 # ---------------------------
 set.seed(123)  
-
-#install.packages(c("VIM", "mice", "missForest", "missMDA", "FactoMineR", "dplyr", "ggplot2", "clustMixType"))
-# install.packages("tibble")  ; library(tibble)
-# install.packages("scales") 
-
-
-# ---------------------------
-# 1. Load Libraries & Functions
-# ---------------------------
-# library(VIM); library(mice); library(missForest); library(missMDA); library(tidyr) 
-# library(dplyr); library(ggplot2); library(clustMixType); library(scales) 
-# library(readxl); library(purrr); library(patchwork)
-
-# ------------------------------------------------
-# Chargement des packages nécessaires avec pacman
-# ------------------------------------------------
 
 # Installer 'pacman' s'il n'est pas présent
 if (!require("pacman", quietly = TRUE)) {
@@ -72,7 +56,7 @@ add_missing <- function(df, prop) {
     mask[row_to_keep, col] <- FALSE
   }
   
-  # Critical fix: Ensure no row becomes fully NA
+  # Ensure no row becomes fully NA
   row_na_counts <- rowSums(mask)
   problematic_rows <- which(row_na_counts == ncol(df))
   
@@ -115,7 +99,7 @@ impute_data <- function(df_missing) {
   message("mice_methods non vide")
   message("5")
   
-  ## --- AJOUT : Création d'une copie pour l'imputation avec droplevels()
+  ## Create a copy for imputation using droplevels()
   df_missing_impute <- df_missing  # Copie du dataframe original
   for(j in seq_along(df_missing_impute)) {
     if(is.factor(df_missing_impute[[j]])) {
@@ -133,7 +117,7 @@ impute_data <- function(df_missing) {
   
   ## --- Vérification des distributions et associations des variables catégoriques ---
   
-  # Calcul de la matrice des associations avec Cramér's V (optionnel)
+  # Calcul de la matrice des associations avec Cramér's V 
   fact_vars_names <- names(df_missing_impute)[sapply(df_missing_impute, is.factor)]
   cramer_matrix <- matrix(NA, nrow = length(fact_vars_names), ncol = length(fact_vars_names),
                           dimnames = list(fact_vars_names, fact_vars_names))
@@ -153,7 +137,7 @@ impute_data <- function(df_missing) {
   
   
   # --- Création d'une predictorMatrix adaptée ---
-  # Utiliser quickpred pour générer une matrice initiale
+  # Quickpred pour générer une matrice initiale
   predMatrix <- quickpred(df_missing_impute, mincor = 0.3)
   
   # Pour les colonnes numériques : supprimer comme prédicteurs 
@@ -179,8 +163,8 @@ impute_data <- function(df_missing) {
   }
   # ---
   
-  # --- AJOUT : Suppression des prédicteurs trop fortement associés pour les facteurs ---
-  threshold_cat <- 0.8  # Seuil à définir en fonction de votre analyse
+  # Suppression des prédicteurs trop fortement associés pour les facteurs
+  threshold_cat <- 0.8  
   for(i in seq_along(fact_vars_names)) {
     for(j in seq_along(fact_vars_names)) {
       if(i != j && cramer_matrix[i, j] > threshold_cat) {
@@ -212,7 +196,7 @@ impute_data <- function(df_missing) {
 
       }, error = function(e) {
         message("KNN failed: ", conditionMessage(e))
-        # Créer un data frame vide de remplacement (preserve structure)
+        # Créer un data frame vide de remplacement
         dummy_df <- as.data.frame(matrix(NA, nrow = nrow(df_missing), ncol = ncol(df_missing)))
         colnames(dummy_df) <- colnames(df_missing)
         for (col in names(df_missing)) {
@@ -452,7 +436,7 @@ run_pipeline <- function(data_loader, props = c(0.05, 0.10, 0.25, 0.50)) {
       message("Missing generation failed: ", conditionMessage(e))
       return(NULL)
     })
-    # View(missing_data$data) # OK
+    # View(missing_data$data) 
     if (is.null(missing_data)) next
     
     # Run imputations with critical checks
@@ -535,7 +519,7 @@ process_imputations <- function(imps, original, mask) {
     tryCatch({
       # Use imp$imputed_data for evaluation
       metrics <- evaluate(original, imp$imputed_data, mask)
-      # Optionally, you could add the runtime here:
+      # add the runtime 
       metrics$Time <- imp$time
       metrics
     }, error = function(e) {
@@ -576,9 +560,6 @@ compile_results <- function(results) {
     )
 }
 
-# ---------------------------
-# 4. Execute & Visualize
-# ---------------------------
 
 # ---------------------------
 # 5. Dataset-specific wrapper 
@@ -697,19 +678,18 @@ load_online_retail <- function(n_rows = 2000) {
       unit_price = as.numeric(UnitPrice)
     ) %>%
     select(-Country) %>%
-    # Critical fix: Remove columns that become all NA
+    # Remove columns that become all NA
     select(where(~!all(is.na(.x))))  # Keep only columns with some non-NA values
   
   
   # Suppress of temp file in the path temp-file 
   unlink(temp_file)
   
-  # BELOW : WHY NOT CALLING VALIDATE_DATASET ?
   # ******************************************
   
   View(df_retail_modif)
   
-  # Enhanced validation
+  # validation
   if(ncol(df_retail_modif) < 3) stop("Too many columns dropped during processing")
   if(!any(sapply(df_retail_modif, is.numeric))) stop("No numeric columns")
   if(!any(sapply(df_retail_modif, is.factor))) stop("No factor columns")
@@ -731,16 +711,15 @@ load_obesity_data <- function(n_rows = 1000) {
       df_obesity <- read.csv(online_url, stringsAsFactors = FALSE, nrows = n_rows)
     }
     
-    # FCVC and FAF moved
     
     df_obesity_modif <- df_obesity %>%
       mutate(
         across(any_of(c("Gender", "family_history_with_overweight", "FAVC", "CAEC", 
                         "SMOKE", "SCC", "CALC", "MTRANS", "NObeyesdad")), as.factor),
         across(any_of(c("Age", "Height", "Weight", "FCVC", "NCP", "CH2O", "FAF", "TUE")), as.numeric),
-        obesity_level = factor(NObeyesdad) # New column
+        obesity_level = factor(NObeyesdad) 
       ) %>%
-      select(-NObeyesdad) # Suppress of variable NObeyesdad
+      select(-NObeyesdad) 
     
     # Validation
     validate_dataset(df_obesity_modif)
@@ -945,10 +924,10 @@ avg_results <- all_results %>%
   summarise(
     Avg_NRMSE = mean(NRMSE, na.rm = TRUE),
     Avg_Accuracy = mean(Accuracy, na.rm = TRUE),
-    Avg_Time = mean(Time, na.rm = TRUE),  # NEW TIME METRIC
+    Avg_Time = mean(Time, na.rm = TRUE),  
     SD_NRMSE = sd(NRMSE, na.rm = TRUE),
     SD_Accuracy = sd(Accuracy, na.rm = TRUE),
-    SD_Time = sd(Time, na.rm = TRUE),     # NEW TIME METRIC
+    SD_Time = sd(Time, na.rm = TRUE),     
     N_Datasets = n_distinct(Dataset),
     .groups = "drop"
   ) %>%
@@ -1085,7 +1064,7 @@ ggsave("average_combined.png", combined_plot, width = 8, height = 10)
 ggsave("average_nrmse.png", nrmse_plot, width = 8, height = 5)
 ggsave("average_accuracy.png", accuracy_plot, width = 8, height = 5)
 
-# Optional: Combined side-by-side view
+# Combined side-by-side view
 side_by_side <- nrmse_plot + accuracy_plot + plot_layout(guides = "collect")
 ggsave("average_side_by_side.png", side_by_side, width = 14, height = 6)
 
